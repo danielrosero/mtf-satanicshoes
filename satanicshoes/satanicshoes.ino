@@ -103,29 +103,26 @@ void setup()
 void loop()
 {
   //Read in Data
-  value = analogRead(sensorPin);
-  
-  if (mp3 != NULL && mp3->isRunning()) {
-    if ( !mp3->loop() ) {
-      //mp3->stop();
-      end_mp3();
-    }
-  } else {
+  value = analogRead(sensorPin);  
     
-    
-    if (value > threshold) {
-      track_counter+=1;
-      Serial.print(" Pizo value: ");    
-    Serial.println(value);    
+  if (value > threshold) {
     end_mp3();
+    track_counter+=1;
+    Serial.print(" Pizo value: ");    
+    Serial.println(value);    
+    
       if (track_counter % 5 == 0 ) {
         start_mp3(1);
       } else {
         start_mp3(0);
       }
     }
-   
-  }
+   else {
+    if (mp3 != NULL && mp3->isRunning()) {
+      if ( !mp3->loop() ) {
+        end_mp3();
+      }
+    }
+   }
   
-
 }
