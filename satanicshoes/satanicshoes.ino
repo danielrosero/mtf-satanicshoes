@@ -17,17 +17,24 @@
 
 // pno_cs from https://ccrma.stanford.edu/~jos/pasp/Sound_Examples.html
 
+
+int number_of_tracks = 2;
+
+char *tracks[] = {"/bass.mp3", 
+              "/15seconds.mp3"
+};
+
 AudioGeneratorMP3 *mp3;
 AudioFileSourceSPIFFS *file;
 AudioOutputI2SNoDAC *out;
 AudioFileSourceID3 *id3;
 
-char *tracks[] = {"/bass.mp3", 
-              "/15seconds.mp3"
-};
 int track_counter = 0;
+const int hard_reset_counter = 50;
+int debouncer = 0;
 
 int threshold = 50;
+int threshold_reset = threshold - 20; // Provides hysterisis
 const int sensorPin = A0;
 int value = 0;
 int randomSample = 0;
@@ -67,11 +74,10 @@ void start_mp3(int tracknumber) {
 
 void end_mp3() {
   Serial.println("Ending MP3");    
+  //id3 = NULL;
   mp3->stop();
-  //delete mp3;
-  //delete id3;
-  //delete out;
-  //delete file;
+ 
+ 
   Serial.println("MP3 ended");    
 }
 
@@ -84,8 +90,6 @@ void setup()
   Serial.printf("Sample MP3 playback begins...\n");
 
   audioLogger = &Serial;
-  //file = new AudioFileSourceSPIFFS("/pno-cs.mp3");
-
 
   
   out = new AudioOutputI2SNoDAC();
@@ -105,11 +109,18 @@ void loop()
   //Read in Data
   value = analogRead(sensorPin);  
     
-  if (value > threshold) {
-    end_mp3();
-    track_counter+=1;
+  if (value > threshold && debouncer > 10) {
     Serial.print(" Pizo value: ");    
     Serial.println(value);    
+    debouncer = 0;
+    end_mp3();
+    track_counter+=1;
+    Serial.print(" Track counter: ");    
+    Serial.println(track_counter);    
+    if ( hard_reset_counter && track_counter>50) {
+    Serial.println(" Too many tracks rebooting. What a hack! ");      
+      ESP.restart();}
+    
     
       if (track_counter % 5 == 0 ) {
         start_mp3(1);
@@ -118,11 +129,15 @@ void loop()
       }
     }
    else {
+    if (value < threshold_reset) { debouncer+=1; }
+    
     if (mp3 != NULL && mp3->isRunning()) {
       if ( !mp3->loop() ) {
         end_mp3();
       }
-    }
+    } 
+    
    }
-  
+
+  //delay(1);
 }
