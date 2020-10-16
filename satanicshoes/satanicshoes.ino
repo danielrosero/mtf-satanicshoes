@@ -1,11 +1,13 @@
 
 #include <Arduino.h>
+
 #ifdef ESP32
-  #include <WiFi.h>
+  //#include <WiFi.h>
   #include "SPIFFS.h"
 #else
   #include <ESP8266WiFi.h>
 #endif
+#include<Wire.h>
 #include "AudioFileSourceSPIFFS.h"
 #include "AudioFileSourceID3.h"
 #include "AudioGeneratorMP3.h"
@@ -81,6 +83,65 @@ void end_mp3() {
   Serial.println("MP3 ended");    
 }
 
+
+const int MPU_addr=0x68; // I2C address of the MPU-6050 
+int16_t AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
+int acc_loop_period = 10000;
+int loop_counter = 0;
+
+bool check_I2c(byte addr){
+  // We are using the return value of
+  // the Write.endTransmisstion to see if
+  // a device did acknowledge to the address.
+  Serial.println(" ");
+  Wire.beginTransmission(addr);
+   
+  if (Wire.endTransmission() == 0)
+  {
+  Serial.print(" Device Found at 0x");
+  Serial.println(addr,HEX);
+  return true;
+  }
+  else
+  {
+  Serial.print(" No Device Found at 0x");
+  Serial.println(addr,HEX);
+  return false;
+  }
+}
+
+void acc_setup(){
+  Wire.begin();
+Serial.begin(115200);
+ 
+check_I2c(MPU_addr); // Check that there is an MPU
+ 
+Wire.beginTransmission(MPU_addr);
+Wire.write(0x6B); // PWR_MGMT_1 register
+Wire.write(0); // set to zero (wakes up the MPU-6050)
+Wire.endTransmission(true);
+}
+void acc_loop(){
+Wire.beginTransmission(MPU_addr);
+Wire.write(0x3B); // starting with register 0x3B (ACCEL_XOUT_H)
+Wire.endTransmission(false);
+Wire.requestFrom(MPU_addr,14,true); // request a total of 14 registers
+AcX=Wire.read()<<8|Wire.read(); // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)
+AcY=Wire.read()<<8|Wire.read(); // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
+AcZ=Wire.read()<<8|Wire.read(); // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
+Tmp=Wire.read()<<8|Wire.read(); // 0x41 (TEMP_OUT_H) & 0x42 (TEMP_OUT_L)
+GyX=Wire.read()<<8|Wire.read(); // 0x43 (GYRO_XOUT_H) & 0x44 (GYRO_XOUT_L)
+GyY=Wire.read()<<8|Wire.read(); // 0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
+GyZ=Wire.read()<<8|Wire.read(); // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
+Serial.print("AcX = "); Serial.print(AcX);
+Serial.print(" | AcY = "); Serial.print(AcY);
+Serial.print(" | AcZ = "); Serial.print(AcZ);
+Serial.print(" | Tmp = "); Serial.print(Tmp);
+Serial.print(" | GyX = "); Serial.print(GyX);
+Serial.print(" | GyY = "); Serial.print(GyY);
+Serial.print(" | GyZ = "); Serial.println(GyZ);
+}
+
 void setup()
 {
   WiFi.mode(WIFI_OFF); 
@@ -100,9 +161,11 @@ void setup()
     Serial.print(" Pizo value: ");    
     Serial.println(value);   
 
-    start_mp3(0);
-}
+//acc_setup();
 
+    start_mp3(0);
+    
+}
 
 void loop()
 {
@@ -138,6 +201,13 @@ void loop()
     } 
     
    }
+
+  loop_counter+=1;
+  if(loop_counter % acc_loop_period == 0 ) {
+//    acc_loop();    
+  }
+
+
 
   //delay(1);
 }
