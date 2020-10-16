@@ -22,6 +22,11 @@ AudioFileSourceSPIFFS *file;
 AudioOutputI2SNoDAC *out;
 AudioFileSourceID3 *id3;
 
+char *tracks[] = {"/bass.mp3", 
+              "/15seconds.mp3"
+};
+int track_counter = 0;
+
 int threshold = 50;
 const int sensorPin = A0;
 int value = 0;
@@ -49,9 +54,9 @@ void MDCallback(void *cbData, const char *type, bool isUnicode, const char *stri
 }
 
 
-void start_mp3() {
+void start_mp3(int tracknumber) {
   Serial.println("Beginning MP3");    
-  file = new AudioFileSourceSPIFFS("/bass.mp3");
+  file = new AudioFileSourceSPIFFS(tracks[tracknumber]);
   id3 = new AudioFileSourceID3(file);
   id3->RegisterMetadataCB(MDCallback, (void*)"ID3TAG");
   mp3 = new AudioGeneratorMP3();
@@ -91,7 +96,7 @@ void setup()
     Serial.print(" Pizo value: ");    
     Serial.println(value);   
 
-    start_mp3();
+    start_mp3(0);
 }
 
 
@@ -109,9 +114,15 @@ void loop()
     
     
     if (value > threshold) {
+      track_counter+=1;
       Serial.print(" Pizo value: ");    
     Serial.println(value);    
-      start_mp3();
+    end_mp3();
+      if (track_counter % 5 == 0 ) {
+        start_mp3(1);
+      } else {
+        start_mp3(0);
+      }
     }
    
   }
